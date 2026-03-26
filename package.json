@@ -1,0 +1,31 @@
+{
+  "name": "code-viewer",
+  "version": "1.0.0",
+  "main": "dist/main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "npm run build:main && npm run build:renderer && npm run copy:static",
+    "build:main": "tsc -p tsconfig.main.json",
+    "build:renderer": "tsc -p tsconfig.renderer.json",
+    "copy:static": "cp src/index.html dist/index.html && cp src/styles.css dist/styles.css",
+    "start": "npm run build && electron .",
+    "dev": "npm run build && electron ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andreinwald/code-viewer.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/andreinwald/code-viewer/issues"
+  },
+  "homepage": "https://github.com/andreinwald/code-viewer#readme",
+  "description": "",
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "electron": "^41.0.4",
+    "typescript": "^6.0.2"
+  }
+}

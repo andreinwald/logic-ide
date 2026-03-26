@@ -9,6 +9,13 @@ type TreeNode = {
   children?: TreeNode[];
 };
 
+type RecentFile = {
+  name: string;
+  path: string;
+  relativePath: string;
+  mtimeMs: number;
+};
+
 let mainWindow: BrowserWindow | null = null;
 let currentRootPath: string | null = null;
 
@@ -45,6 +52,53 @@ async function buildTree(dirPath: string): Promise<TreeNode[]> {
   );
 
   return nodes;
+}
+
+async function collectRecentFiles(rootPath: string, limit: number): Promise<RecentFile[]> {
+  const collected: RecentFile[] = [];
+
+  async function visit(dirPath: string): Promise<void> {
+    let entries;
+    try {
+      entries = await fs.readdir(dirPath, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    const visibleEntries = entries.filter((entry) => !entry.name.startsWith('.'));
+
+    await Promise.all(
+      visibleEntries.map(async (entry) => {
+        const fullPath = path.join(dirPath, entry.name);
+
+        if (entry.isDirectory()) {
+          await visit(fullPath);
+          return;
+        }
+
+        if (!entry.isFile()) {
+          return;
+        }
+
+        try {
+          const stats = await fs.stat(fullPath);
+          collected.push({
+            name: entry.name,
+            path: fullPath,
+            relativePath: path.relative(rootPath, fullPath),
+            mtimeMs: stats.mtimeMs
+          });
+        } catch {
+          // Ignore files we cannot read metadata for.
+        }
+      })
+    );
+  }
+
+  await visit(rootPath);
+
+  collected.sort((a, b) => b.mtimeMs - a.mtimeMs);
+  return collected.slice(0, limit);
 }
 
 function isPathInsideRoot(candidatePath: string, rootPath: string): boolean {
@@ -105,6 +159,22 @@ ipcMain.handle('fs:readFileText', async (_event, filePath: string) => {
   }
 
   return fs.readFile(filePath, 'utf8');
+});
+
+ipcMain.handle('fs:listRecentFiles', async () => {
+  if (!currentRootPath) {
+    throw new Error('No folder opened yet');
+  }
+
+  return collectRecentFiles(currentRootPath, 50);
+});
+
+ipcMain.handle('fs:listTree', async () => {
+  if (!currentRootPath) {
+    throw new Error('No folder opened yet');
+  }
+
+  return buildTree(currentRootPath);
 });
 
 app.whenReady().then(() => {

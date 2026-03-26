@@ -18,9 +18,18 @@ type OpenFolderResult = {
   tree: TreeNode[];
 } | null;
 
+type RecentFile = {
+  name: string;
+  path: string;
+  relativePath: string;
+  mtimeMs: number;
+};
+
 type ElectronAPI = {
   openFolder: () => Promise<OpenFolderResult>;
   readFileText: (filePath: string) => Promise<string>;
+  listRecentFiles: () => Promise<RecentFile[]>;
+  listTree: () => Promise<TreeNode[]>;
 };
 
 declare global {
@@ -31,6 +40,7 @@ declare global {
 
 const openFolderButton = document.getElementById('open-folder-btn') as HTMLButtonElement;
 const rootPathElement = document.getElementById('root-path') as HTMLDivElement;
+const recentFilesContainer = document.getElementById('recent-files') as HTMLDivElement;
 const treeContainer = document.getElementById('tree') as HTMLDivElement;
 const editorFilePath = document.getElementById('editor-file-path') as HTMLDivElement;
 const editorContent = document.getElementById('editor-content') as HTMLPreElement;
@@ -45,6 +55,11 @@ const SETI_EXTENSION_FALLBACK_ICON: Record<string, string> = {
 };
 let currentTheme: 'light' | 'dark' = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 let currentTreeNodes: TreeNode[] = [];
+let currentRecentFiles: RecentFile[] = [];
+let currentRootPath: string | null = null;
+let refreshIntervalId: number | null = null;
+const expandedDirectoryPaths = new Set<string>();
+const relativeTimeFormatter = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
 
 function findSetiIconId(fileName: string): string | null {
   const lower = fileName.toLowerCase();
@@ -196,15 +211,8 @@ function createNodeElement(node: TreeNode): HTMLLIElement {
       label.style.color = fileColor;
     }
 
-    row.addEventListener('click', async () => {
-      editorFilePath.textContent = node.path;
-      editorContent.textContent = 'Loading...';
-      try {
-        const fileText = await window.electronAPI.readFileText(node.path);
-        editorContent.textContent = fileText;
-      } catch (error) {
-        editorContent.textContent = `Cannot read file: ${String(error)}`;
-      }
+    row.addEventListener('click', () => {
+      void openFile(node.path);
     });
     return item;
   }
@@ -223,11 +231,23 @@ function createNodeElement(node: TreeNode): HTMLLIElement {
     childList.appendChild(createNodeElement(childNode));
   }
 
+  const startExpanded = expandedDirectoryPaths.has(node.path);
+  if (startExpanded) {
+    row.classList.remove('collapsed');
+    row.classList.add('expanded');
+    childList.hidden = false;
+  }
+
   const toggle = () => {
     const isCollapsed = row.classList.contains('collapsed');
     row.classList.toggle('collapsed', !isCollapsed);
     row.classList.toggle('expanded', isCollapsed);
     childList.hidden = !isCollapsed;
+    if (isCollapsed) {
+      expandedDirectoryPaths.add(node.path);
+    } else {
+      expandedDirectoryPaths.delete(node.path);
+    }
   };
 
   row.addEventListener('click', toggle);
@@ -253,6 +273,154 @@ function renderTree(nodes: TreeNode[]): void {
   treeContainer.appendChild(list);
 }
 
+function renderRecentFiles(files: RecentFile[]): void {
+  currentRecentFiles = files;
+  recentFilesContainer.innerHTML = '';
+
+  if (files.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'recent-empty';
+    empty.textContent = 'No recent files';
+    recentFilesContainer.appendChild(empty);
+    return;
+  }
+
+  const list = document.createElement('ul');
+  list.className = 'recent-list';
+
+  for (const file of files) {
+    const item = document.createElement('li');
+    item.className = 'recent-item';
+
+    const row = document.createElement('button');
+    row.className = 'recent-button';
+    row.type = 'button';
+    row.title = file.path;
+
+    const icon = document.createElement('span');
+    icon.className = 'seti-file-icon';
+    icon.textContent = getFileIconGlyph(file.name);
+    row.appendChild(icon);
+
+    const text = document.createElement('span');
+    text.className = 'recent-text';
+    text.textContent = file.relativePath;
+    const fileColor = getFileColor(file.name);
+    if (fileColor) {
+      text.style.color = fileColor;
+    }
+    row.appendChild(text);
+
+    const age = document.createElement('span');
+    age.className = 'recent-age';
+    age.textContent = formatAge(file.mtimeMs);
+    age.title = new Date(file.mtimeMs).toLocaleString();
+    row.appendChild(age);
+
+    row.addEventListener('click', () => {
+      void openFile(file.path);
+    });
+
+    item.appendChild(row);
+    list.appendChild(item);
+  }
+
+  recentFilesContainer.appendChild(list);
+}
+
+function formatAge(mtimeMs: number): string {
+  const diffSeconds = Math.max(0, Math.floor((Date.now() - mtimeMs) / 1000));
+  if (diffSeconds < 60) {
+    return `${diffSeconds} ${diffSeconds === 1 ? 'sec' : 'sec'}`;
+  }
+  if (diffSeconds < 3600) {
+    return shortRelative(-Math.floor(diffSeconds / 60), 'minute');
+  }
+  if (diffSeconds < 86400) {
+    return shortRelative(-Math.floor(diffSeconds / 3600), 'hour');
+  }
+  if (diffSeconds < 604800) {
+    return shortRelative(-Math.floor(diffSeconds / 86400), 'day');
+  }
+  if (diffSeconds < 2629800) {
+    return shortRelative(-Math.floor(diffSeconds / 604800), 'week');
+  }
+  if (diffSeconds < 31557600) {
+    return shortRelative(-Math.floor(diffSeconds / 2629800), 'month');
+  }
+  return shortRelative(-Math.floor(diffSeconds / 31557600), 'year');
+}
+
+function shortRelative(
+  value: number,
+  unit: Intl.RelativeTimeFormatUnit
+): string {
+  const absValue = Math.abs(value);
+  const full = relativeTimeFormatter.format(value, unit);
+  const parts = full.split(' ');
+  if (parts.length < 2) {
+    return full;
+  }
+
+  const amount = parts[0];
+  const word = parts[1];
+  if (word.startsWith('minute')) {
+    return `${amount} min`;
+  }
+  if (word.startsWith('hour')) {
+    return `${amount} ${absValue === 1 ? 'hour' : 'hours'}`;
+  }
+  if (word.startsWith('day')) {
+    return `${amount} ${absValue === 1 ? 'day' : 'days'}`;
+  }
+  if (word.startsWith('week')) {
+    return `${amount} ${absValue === 1 ? 'week' : 'weeks'}`;
+  }
+  if (word.startsWith('month')) {
+    return `${amount} ${absValue === 1 ? 'month' : 'months'}`;
+  }
+  if (word.startsWith('year')) {
+    return `${amount} ${absValue === 1 ? 'year' : 'years'}`;
+  }
+  return full;
+}
+
+async function openFile(filePath: string): Promise<void> {
+  editorFilePath.textContent = filePath;
+  editorContent.textContent = 'Loading...';
+  try {
+    const fileText = await window.electronAPI.readFileText(filePath);
+    editorContent.textContent = fileText;
+  } catch (error) {
+    editorContent.textContent = `Cannot read file: ${String(error)}`;
+  }
+}
+
+async function refreshWorkspaceView(): Promise<void> {
+  if (!currentRootPath) {
+    return;
+  }
+  try {
+    const [tree, recentFiles] = await Promise.all([
+      window.electronAPI.listTree(),
+      window.electronAPI.listRecentFiles()
+    ]);
+    renderTree(tree);
+    renderRecentFiles(recentFiles);
+  } catch {
+    // Ignore transient refresh errors (for example temporary file permission race).
+  }
+}
+
+function startAutoRefresh(): void {
+  if (refreshIntervalId !== null) {
+    window.clearInterval(refreshIntervalId);
+  }
+  refreshIntervalId = window.setInterval(() => {
+    void refreshWorkspaceView();
+  }, 5_000);
+}
+
 openFolderButton.addEventListener('click', async () => {
   const result = await window.electronAPI.openFolder();
 
@@ -260,8 +428,11 @@ openFolderButton.addEventListener('click', async () => {
     return;
   }
 
+  currentRootPath = result.rootPath;
+  expandedDirectoryPaths.clear();
   rootPathElement.textContent = result.rootPath;
-  renderTree(result.tree);
+  await refreshWorkspaceView();
+  startAutoRefresh();
   editorFilePath.textContent = 'Select a file from the tree';
   editorContent.textContent = '';
 });
@@ -271,6 +442,15 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (ev
   if (currentTreeNodes.length > 0) {
     renderTree(currentTreeNodes);
   }
+  if (currentRecentFiles.length > 0) {
+    renderRecentFiles(currentRecentFiles);
+  }
 });
+
+setInterval(() => {
+  if (currentRecentFiles.length > 0) {
+    renderRecentFiles(currentRecentFiles);
+  }
+}, 30_000);
 
 export {};

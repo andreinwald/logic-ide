@@ -65,9 +65,26 @@ body {
 }
 
 .sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   border-right: 1px solid var(--border);
   padding: 10px;
-  overflow: auto;
+  overflow: hidden;
+}
+
+.sidebar-panel {
+  min-height: 0;
+}
+
+.recent-panel {
+  height: 30%;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+}
+
+.tree-panel {
+  height: 70%;
 }
 
 .sidebar h2 {
@@ -75,6 +92,62 @@ body {
   font-size: 14px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+#recent-files,
+#tree {
+  height: calc(100% - 24px);
+  overflow: auto;
+}
+
+.recent-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recent-item {
+  margin: 0;
+}
+
+.recent-button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: 4px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+
+.recent-button:hover {
+  background: var(--hover);
+}
+
+.recent-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.recent-age {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.recent-empty {
+  color: var(--muted);
+  font-size: 12px;
+  padding: 4px 6px;
 }
 
 .tree-list {

@@ -9,6 +9,13 @@
   --button-border: #999;
 }
 
+@font-face {
+  font-family: "Seti";
+  src: url("./assets/seti.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -77,6 +84,9 @@ body {
 }
 
 .tree-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   padding: 4px 6px;
   border-radius: 4px;
   font-size: 13px;
@@ -99,11 +109,27 @@ body {
 .tree-directory::before {
   content: "▸";
   display: inline-block;
-  width: 1.2em;
+  width: 0.9em;
 }
 
 .tree-directory.expanded::before {
   content: "▾";
+}
+
+.seti-file-icon {
+  width: 1em;
+  font-family: "Seti", monospace;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--muted);
+  flex: 0 0 1em;
+}
+
+.tree-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .editor-pane {

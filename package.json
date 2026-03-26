@@ -7,7 +7,7 @@
     "build": "npm run build:main && npm run build:renderer && npm run copy:static",
     "build:main": "tsc -p tsconfig.main.json",
     "build:renderer": "tsc -p tsconfig.renderer.json",
-    "copy:static": "cp src/index.html dist/index.html && cp src/styles.css dist/styles.css",
+    "copy:static": "mkdir -p dist/assets && cp src/index.html dist/index.html && cp src/styles.css dist/styles.css && cp src/assets/seti.woff dist/assets/seti.woff",
     "start": "npm run build && electron .",
     "dev": "npm run build && electron ."
   },

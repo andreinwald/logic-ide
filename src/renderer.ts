@@ -31,10 +31,10 @@ type ElectronAPI = {
   readFileText: (filePath: string) => Promise<string>;
   listRecentFiles: () => Promise<RecentFile[]>;
   listTree: () => Promise<TreeNode[]>;
-  explainFile: (filePath: string, content: string) => Promise<void>;
-  onExplanationChunk: (callback: (chunk: string) => void) => void;
-  onExplanationDone: (callback: () => void) => void;
-  onExplanationError: (callback: (err: string) => void) => void;
+  explainFile: (filePath: string, content: string, tabId: string) => Promise<void>;
+  onExplanationChunk: (callback: (tabId: string, chunk: string) => void) => void;
+  onExplanationDone: (callback: (tabId: string) => void) => void;
+  onExplanationError: (callback: (tabId: string, err: string) => void) => void;
 };
 
 declare global {
@@ -48,7 +48,7 @@ const rootPathElement = document.getElementById('root-path') as HTMLDivElement;
 const recentFilesContainer = document.getElementById('recent-files') as HTMLDivElement;
 const treeContainer = document.getElementById('tree') as HTMLDivElement;
 const explanationContent = document.getElementById('explanation-content') as HTMLDivElement;
-const explanationLoader = document.getElementById('explanation-loader') as HTMLSpanElement;
+const tabBar = document.getElementById('tab-bar') as HTMLDivElement;
 
 const extensionKeys = Object.keys(SETI_FILE_EXTENSION_ICON).sort((a, b) => b.length - a.length);
 const SETI_EXTENSION_FALLBACK_ICON: Record<string, string> = {
@@ -63,8 +63,79 @@ let currentTreeNodes: TreeNode[] = [];
 let currentRecentFiles: RecentFile[] = [];
 let currentRootPath: string | null = null;
 let refreshIntervalId: number | null = null;
-let currentExplainId = 0;
-let explanationRawText = '';
+type Tab = {
+  id: string;
+  filePath: string;
+  fileName: string;
+  rawText: string;
+  status: 'loading' | 'done' | 'error';
+};
+
+let tabs: Tab[] = [];
+let activeTabId: string | null = null;
+let nextTabId = 1;
+
+function renderTabs(): void {
+  tabBar.innerHTML = '';
+  for (const tab of tabs) {
+    const el = document.createElement('div');
+    el.className = 'tab' + (tab.id === activeTabId ? ' tab-active' : '');
+
+    const title = document.createElement('span');
+    title.className = 'tab-title';
+    title.textContent = tab.fileName;
+    el.appendChild(title);
+
+    if (tab.status === 'loading') {
+      const spinner = document.createElement('span');
+      spinner.className = 'tab-spinner';
+      el.appendChild(spinner);
+    }
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'tab-close';
+    closeBtn.textContent = '×';
+    closeBtn.title = 'Close';
+    closeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeTab(tab.id);
+    });
+    el.appendChild(closeBtn);
+
+    el.addEventListener('click', () => { switchTab(tab.id); });
+    tabBar.appendChild(el);
+  }
+}
+
+function renderActiveTab(): void {
+  const tab = tabs.find((t) => t.id === activeTabId);
+  if (!tab) {
+    explanationContent.innerHTML = '';
+    return;
+  }
+  if (tab.status === 'error') {
+    explanationContent.innerHTML = `<p class="explanation-error-text">${tab.rawText}</p>`;
+  } else {
+    explanationContent.innerHTML = marked.parse(tab.rawText) as string;
+  }
+}
+
+function switchTab(tabId: string): void {
+  activeTabId = tabId;
+  renderTabs();
+  renderActiveTab();
+}
+
+function closeTab(tabId: string): void {
+  const idx = tabs.findIndex((t) => t.id === tabId);
+  if (idx === -1) return;
+  tabs.splice(idx, 1);
+  if (activeTabId === tabId) {
+    activeTabId = tabs[idx]?.id ?? tabs[idx - 1]?.id ?? null;
+  }
+  renderTabs();
+  renderActiveTab();
+}
 const expandedDirectoryPaths = new Set<string>();
 const relativeTimeFormatter = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
 
@@ -393,43 +464,60 @@ function shortRelative(
 }
 
 async function openFile(filePath: string): Promise<void> {
-  currentExplainId += 1;
-  const explainId = currentExplainId;
+  const existing = tabs.find((t) => t.filePath === filePath);
+  if (existing) {
+    switchTab(existing.id);
+    return;
+  }
 
-  explanationContent.innerHTML = '';
-  explanationRawText = '';
-  explanationContent.dataset.explainId = String(explainId);
-  explanationContent.classList.remove('explanation-error');
-  explanationLoader.classList.remove('hidden');
+  const tabId = String(nextTabId++);
+  const tab: Tab = {
+    id: tabId,
+    filePath,
+    fileName: filePath.split('/').pop() ?? filePath,
+    rawText: '',
+    status: 'loading',
+  };
+  tabs.push(tab);
+  switchTab(tabId);
+
   try {
     const fileText = await window.electronAPI.readFileText(filePath);
-    if (explainId !== currentExplainId) return;
-    void window.electronAPI.explainFile(filePath, fileText);
+    if (!tabs.find((t) => t.id === tabId)) return;
+    void window.electronAPI.explainFile(filePath, fileText, tabId);
   } catch (error) {
-    if (explainId !== currentExplainId) return;
-    explanationLoader.classList.add('hidden');
-    explanationContent.innerHTML = `<p>Cannot read file: ${String(error)}</p>`;
-    explanationContent.classList.add('explanation-error');
+    const t = tabs.find((t) => t.id === tabId);
+    if (!t) return;
+    t.status = 'error';
+    t.rawText = `Cannot read file: ${String(error)}`;
+    renderTabs();
+    if (activeTabId === tabId) renderActiveTab();
   }
 }
 
-// Set up explanation streaming listeners once
-window.electronAPI.onExplanationChunk((chunk) => {
-  if (explanationContent.dataset.explainId !== String(currentExplainId)) return;
-  explanationRawText += chunk;
-  explanationContent.innerHTML = marked.parse(explanationRawText) as string;
+window.electronAPI.onExplanationChunk((tabId, chunk) => {
+  const tab = tabs.find((t) => t.id === tabId);
+  if (!tab) return;
+  tab.rawText += chunk;
+  if (activeTabId === tabId) {
+    explanationContent.innerHTML = marked.parse(tab.rawText) as string;
+  }
 });
 
-window.electronAPI.onExplanationDone(() => {
-  if (explanationContent.dataset.explainId !== String(currentExplainId)) return;
-  explanationLoader.classList.add('hidden');
+window.electronAPI.onExplanationDone((tabId) => {
+  const tab = tabs.find((t) => t.id === tabId);
+  if (!tab) return;
+  tab.status = 'done';
+  renderTabs();
 });
 
-window.electronAPI.onExplanationError((err) => {
-  if (explanationContent.dataset.explainId !== String(currentExplainId)) return;
-  explanationLoader.classList.add('hidden');
-  explanationContent.innerHTML = `<p>Error: ${err}</p>`;
-  explanationContent.classList.add('explanation-error');
+window.electronAPI.onExplanationError((tabId, err) => {
+  const tab = tabs.find((t) => t.id === tabId);
+  if (!tab) return;
+  tab.status = 'error';
+  tab.rawText = `Error: ${err}`;
+  renderTabs();
+  if (activeTabId === tabId) renderActiveTab();
 });
 
 async function refreshWorkspaceView(): Promise<void> {

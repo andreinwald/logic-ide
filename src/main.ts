@@ -196,15 +196,15 @@ ipcMain.handle('fs:listTree', async () => {
   return buildTree(currentRootPath);
 });
 
-ipcMain.handle('claude:explainFile', async (event, filePath: string, fileContent: string) => {
+ipcMain.handle('claude:explainFile', async (event, filePath: string, fileContent: string, tabId: string) => {
   try {
     await ask(
       `Explain me this file briefly (${filePath}):\n\n${fileContent}`,
-      (chunk) => { event.sender.send('claude:chunk', chunk); },
+      (chunk) => { event.sender.send('claude:chunk', tabId, chunk); },
     );
-    event.sender.send('claude:done');
+    event.sender.send('claude:done', tabId);
   } catch (err) {
-    event.sender.send('claude:error', String(err));
+    event.sender.send('claude:error', tabId, String(err));
   }
 });
 

@@ -47,8 +47,6 @@ const openFolderButton = document.getElementById('open-folder-btn') as HTMLButto
 const rootPathElement = document.getElementById('root-path') as HTMLDivElement;
 const recentFilesContainer = document.getElementById('recent-files') as HTMLDivElement;
 const treeContainer = document.getElementById('tree') as HTMLDivElement;
-const editorFilePath = document.getElementById('editor-file-path') as HTMLDivElement;
-const editorContent = document.getElementById('editor-content') as HTMLPreElement;
 const explanationContent = document.getElementById('explanation-content') as HTMLDivElement;
 const explanationLoader = document.getElementById('explanation-loader') as HTMLSpanElement;
 
@@ -65,7 +63,6 @@ let currentTreeNodes: TreeNode[] = [];
 let currentRecentFiles: RecentFile[] = [];
 let currentRootPath: string | null = null;
 let refreshIntervalId: number | null = null;
-let activeExplainPath: string | null = null;
 let currentExplainId = 0;
 let explanationRawText = '';
 const expandedDirectoryPaths = new Set<string>();
@@ -399,23 +396,20 @@ async function openFile(filePath: string): Promise<void> {
   currentExplainId += 1;
   const explainId = currentExplainId;
 
-  editorFilePath.textContent = filePath;
-  editorContent.textContent = 'Loading...';
   explanationContent.innerHTML = '';
   explanationRawText = '';
   explanationContent.dataset.explainId = String(explainId);
   explanationContent.classList.remove('explanation-error');
   explanationLoader.classList.remove('hidden');
-  activeExplainPath = filePath;
   try {
     const fileText = await window.electronAPI.readFileText(filePath);
     if (explainId !== currentExplainId) return;
-    editorContent.textContent = fileText;
     void window.electronAPI.explainFile(filePath, fileText);
   } catch (error) {
     if (explainId !== currentExplainId) return;
-    editorContent.textContent = `Cannot read file: ${String(error)}`;
     explanationLoader.classList.add('hidden');
+    explanationContent.innerHTML = `<p>Cannot read file: ${String(error)}</p>`;
+    explanationContent.classList.add('explanation-error');
   }
 }
 
@@ -568,13 +562,6 @@ initColResizer(
   '--col-sidebar',
   () => parseInt(getComputedStyle(layout).gridTemplateColumns.split(' ')[0], 10),
   1
-);
-
-initColResizer(
-  'resizer-explanation',
-  '--col-explanation',
-  () => parseInt(getComputedStyle(layout).gridTemplateColumns.split(' ')[4], 10),
-  -1
 );
 
 initRowResizer('resizer-panels');

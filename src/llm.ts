@@ -1,38 +1,49 @@
-import { query } from "@anthropic-ai/claude-agent-sdk";
-import type { Options as ClaudeAgentOptions } from "@anthropic-ai/claude-agent-sdk";
+import { unstable_v2_createSession } from "@anthropic-ai/claude-agent-sdk";
+import type { SDKSession, SDKSessionOptions } from "@anthropic-ai/claude-agent-sdk";
+
+const defaultSessionOptions: SDKSessionOptions = {
+    model: "sonnet",
+    allowedTools: [],
+};
+
+let session: SDKSession | null = null;
+
+function getSession(): SDKSession {
+    if (!session) {
+        session = unstable_v2_createSession({ ...defaultSessionOptions });
+    }
+    return session;
+}
+
+export function resetSession(): void {
+    session?.close();
+    session = null;
+}
 
 export async function ask(
     message: string,
     onChunk?: (chunk: string) => void,
-    options?: Partial<ClaudeAgentOptions>
 ): Promise<string> {
-    const defaultOptions: ClaudeAgentOptions = {
-        model: "opus",                    // or "sonnet", "haiku"
-        maxTurns: 1,                      // 1 query → 1 response (no multi-turn agent loop)
-        allowedTools: [],                 // disable tools for simple chat
-        ...options,
-    };
+    const sess = getSession();
+    await sess.send(message);
 
     let fullResponse = "";
 
-    // query() returns an async iterator of messages
-    for await (const msg of query({
-        prompt: message,
-        options: defaultOptions,
-    })) {
-        // We only care about assistant text blocks
+    for await (const msg of sess.stream()) {
         if (msg.type === "assistant") {
             for (const block of msg.message.content || []) {
                 if ("text" in block && typeof block.text === "string") {
                     const textChunk = block.text;
                     fullResponse += textChunk;
 
-                    // Stream to callback if provided (for real-time UI)
                     if (onChunk) {
                         onChunk(textChunk);
                     }
                 }
             }
+        }
+        if (msg.type === "result") {
+            break;
         }
     }
 

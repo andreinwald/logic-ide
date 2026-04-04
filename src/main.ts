@@ -183,7 +183,6 @@ ipcMain.handle('claude:explainFile', async (event, filePath: string, fileContent
     await ask(
       `Explain me this file (${filePath}):\n\n${fileContent}`,
       (chunk) => { event.sender.send('claude:chunk', chunk); },
-      { model: 'haiku', maxTurns: 1, allowedTools: [] }
     );
     event.sender.send('claude:done');
   } catch (err) {

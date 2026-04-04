@@ -1,6 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import ignore, { type Ignore } from 'ignore';
 import { ask } from './llm';
 
 type TreeNode = {
@@ -55,8 +56,20 @@ async function buildTree(dirPath: string): Promise<TreeNode[]> {
   return nodes;
 }
 
+async function loadGitignore(rootPath: string): Promise<Ignore> {
+  const ig = ignore();
+  try {
+    const content = await fs.readFile(path.join(rootPath, '.gitignore'), 'utf8');
+    ig.add(content);
+  } catch {
+    // No .gitignore or unreadable — proceed without filtering.
+  }
+  return ig;
+}
+
 async function collectRecentFiles(rootPath: string, limit: number): Promise<RecentFile[]> {
   const collected: RecentFile[] = [];
+  const ig = await loadGitignore(rootPath);
 
   async function visit(dirPath: string): Promise<void> {
     let entries;
@@ -71,6 +84,11 @@ async function collectRecentFiles(rootPath: string, limit: number): Promise<Rece
     await Promise.all(
       visibleEntries.map(async (entry) => {
         const fullPath = path.join(dirPath, entry.name);
+        const relativePath = path.relative(rootPath, fullPath);
+
+        if (ig.ignores(relativePath)) {
+          return;
+        }
 
         if (entry.isDirectory()) {
           await visit(fullPath);
@@ -86,7 +104,7 @@ async function collectRecentFiles(rootPath: string, limit: number): Promise<Rece
           collected.push({
             name: entry.name,
             path: fullPath,
-            relativePath: path.relative(rootPath, fullPath),
+            relativePath,
             mtimeMs: stats.mtimeMs
           });
         } catch {

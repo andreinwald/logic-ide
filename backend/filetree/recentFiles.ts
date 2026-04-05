@@ -2,12 +2,8 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import ignore from 'ignore';
 
-export type RecentFile = {
-  name: string;
-  path: string;
-  relativePath: string;
-  mtimeMs: number;
-};
+import type { RecentFile } from '../../bridge';
+export type { RecentFile };
 
 async function loadGitignore(rootPath: string) {
   const ig = ignore();

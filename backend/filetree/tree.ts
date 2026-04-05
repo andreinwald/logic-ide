@@ -1,12 +1,8 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
-export type TreeNode = {
-  name: string;
-  path: string;
-  type: 'file' | 'directory';
-  children?: TreeNode[];
-};
+import type { TreeNode } from '../../bridge';
+export type { TreeNode };
 
 export async function buildTree(dirPath: string): Promise<TreeNode[]> {
   const entries = await fs.readdir(dirPath, { withFileTypes: true });

@@ -1,4 +1,4 @@
-import type { RecentFile } from '../backend/filetree/recentFiles';
+import type { RecentFile } from '@bridge';
 import { getFileIconGlyph, getFileColor } from '../backend/fileicons/fileIcons';
 import { formatAge } from '../backend/utils/timeFormat';
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { TreeNode } from '../backend/filetree/tree';
+import type { TreeNode } from '@bridge';
 import { getFileIconGlyph, getFileColor } from '../backend/fileicons/fileIcons';
 
 type Props = {

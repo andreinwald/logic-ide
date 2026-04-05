@@ -36,7 +36,7 @@ export default defineConfig({
         },
       },
       preload: {
-        input: path.resolve(__dirname, 'backend/preload.ts'),
+        input: path.resolve(__dirname, 'bridge/index.ts'),
         vite: {
           build: {
             outDir: path.resolve(__dirname, 'dist/electron'),
@@ -45,6 +45,11 @@ export default defineConfig({
       },
     }),
   ],
+  resolve: {
+    alias: {
+      '@bridge': path.resolve(__dirname, 'bridge'),
+    },
+  },
   build: {
     outDir: path.resolve(__dirname, 'dist/electron'),
     emptyOutDir: false,

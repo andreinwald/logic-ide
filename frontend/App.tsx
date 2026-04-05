@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import type { TreeNode } from '../backend/filetree/tree';
-import type { RecentFile } from '../backend/filetree/recentFiles';
-import type { OpenFolderResult } from '../backend/preload';
+import type { TreeNode, RecentFile } from '@bridge';
+import type { OpenFolderResult } from '@bridge';
 import { Tabs } from './Tabs';
 import type { Tab } from './Tabs';
 import { FileTree } from './FileTree';

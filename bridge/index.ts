@@ -20,6 +20,17 @@ export type OpenFolderResult = {
   tree: TreeNode[];
 } | null;
 
+export type ElectronAPI = {
+  openFolder: () => Promise<OpenFolderResult>;
+  fileExists: (filePath: string) => Promise<boolean>;
+  listRecentFiles: () => Promise<RecentFile[]>;
+  listTree: () => Promise<TreeNode[]>;
+  explainFile: (filePath: string, tabId: string) => Promise<void>;
+  onExplanationChunk: (callback: (tabId: string, chunk: string) => void) => void;
+  onExplanationDone: (callback: (tabId: string) => void) => void;
+  onExplanationError: (callback: (tabId: string, err: string) => void) => void;
+};
+
 contextBridge.exposeInMainWorld('electronAPI', {
   openFolder: (): Promise<OpenFolderResult> => ipcRenderer.invoke(CHANNELS.OPEN_FOLDER),
   fileExists: (filePath: string): Promise<boolean> => ipcRenderer.invoke(CHANNELS.FILE_EXISTS, filePath),

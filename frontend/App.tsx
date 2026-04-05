@@ -1,23 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import type { TreeNode, RecentFile } from '@bridge';
-import type { OpenFolderResult } from '@bridge';
 import { Tabs } from './Tabs';
 import type { Tab } from './Tabs';
 import { FileTree } from './FileTree';
 import { RecentFiles } from './RecentFiles';
-
-type ElectronAPI = {
-  openFolder: () => Promise<OpenFolderResult>;
-  fileExists: (filePath: string) => Promise<boolean>;
-  listRecentFiles: () => Promise<RecentFile[]>;
-  listTree: () => Promise<TreeNode[]>;
-  explainFile: (filePath: string, tabId: string) => Promise<void>;
-  onExplanationChunk: (callback: (tabId: string, chunk: string) => void) => void;
-  onExplanationDone: (callback: (tabId: string) => void) => void;
-  onExplanationError: (callback: (tabId: string, err: string) => void) => void;
-};
-
-declare global { interface Window { electronAPI: ElectronAPI; } }
+import { ElectronAPI } from './ElectronAPI';
 
 let nextTabId = 1;
 
@@ -36,13 +23,13 @@ export default function App() {
 
   // IPC streaming
   useEffect(() => {
-    window.electronAPI.onExplanationChunk((tabId, chunk) => {
+    ElectronAPI.onExplanationChunk((tabId, chunk) => {
       setTabs(prev => prev.map(t => t.id === tabId ? { ...t, rawText: t.rawText + chunk } : t));
     });
-    window.electronAPI.onExplanationDone((tabId) => {
+    ElectronAPI.onExplanationDone((tabId) => {
       setTabs(prev => prev.map(t => t.id === tabId ? { ...t, status: 'done' } : t));
     });
-    window.electronAPI.onExplanationError((tabId, err) => {
+    ElectronAPI.onExplanationError((tabId, err) => {
       setTabs(prev => prev.map(t => t.id === tabId ? { ...t, status: 'error', rawText: `Error: ${err}` } : t));
     });
   }, []);
@@ -125,8 +112,8 @@ export default function App() {
   async function refreshWorkspace(): Promise<void> {
     try {
       const [tree, recent] = await Promise.all([
-        window.electronAPI.listTree(),
-        window.electronAPI.listRecentFiles(),
+        ElectronAPI.listTree(),
+        ElectronAPI.listRecentFiles(),
       ]);
       setTreeNodes(tree);
       setRecentFiles(recent);
@@ -147,7 +134,7 @@ export default function App() {
       status: 'loading',
     }]);
     setActiveTabId(tabId);
-    void window.electronAPI.explainFile(filePath, tabId);
+    void ElectronAPI.explainFile(filePath, tabId);
   }
 
   function closeTab(tabId: string): void {
@@ -161,16 +148,16 @@ export default function App() {
   function handleLinkClick(href: string): void {
     if (!rootPath) return;
     const fullPath = `${rootPath}/${href}`.replace(/\/+/g, '/');
-    void window.electronAPI.fileExists(fullPath).then(exists => { if (exists) openFile(fullPath); });
+    void ElectronAPI.fileExists(fullPath).then(exists => { if (exists) openFile(fullPath); });
   }
 
   async function handleOpenFolder(): Promise<void> {
-    const result = await window.electronAPI.openFolder();
+    const result = await ElectronAPI.openFolder();
     if (!result) return;
     setRootPath(result.rootPath);
     const [tree, recent] = await Promise.all([
-      window.electronAPI.listTree(),
-      window.electronAPI.listRecentFiles(),
+      ElectronAPI.listTree(),
+      ElectronAPI.listRecentFiles(),
     ]);
     setTreeNodes(tree);
     setRecentFiles(recent);

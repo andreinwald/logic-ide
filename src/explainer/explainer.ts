@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { createHash } from 'node:crypto';
-import { ask } from '../llm';
+import { ask } from '../llm/llm';
 
 let promptTemplate: string | null = null;
 

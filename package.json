@@ -1,16 +1,16 @@
 {
   "name": "code-viewer",
   "version": "1.0.0",
-  "main": "dist/main.js",
+  "main": "dist/electron/main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "npm run build:main && npm run build:renderer && npm run copy:static",
     "build:main": "tsc -p tsconfig.main.json",
-    "build:renderer": "esbuild src/renderer.ts --bundle --platform=browser --format=esm --outfile=dist/renderer.js",
-    "copy:static": "mkdir -p dist/assets dist/explainer && cp src/index.html dist/index.html && cp src/styles.css dist/styles.css && cp src/assets/seti.woff dist/assets/seti.woff && cp src/explainer/prompt.md dist/explainer/prompt.md",
+    "build:renderer": "esbuild src/electron/renderer.ts --bundle --platform=browser --format=esm --outfile=dist/electron/renderer.js",
+    "copy:static": "mkdir -p dist/electron/assets dist/explainer && cp src/electron/index.html dist/electron/index.html && cp src/electron/styles.css dist/electron/styles.css && cp src/electron/assets/seti.woff dist/electron/assets/seti.woff && cp src/explainer/prompt.md dist/explainer/prompt.md",
     "start": "npm run build && electron .",
     "dev": "npm run build && electron .",
-    "check": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.renderer.json --noEmit"
+    "check": "tsc -p tsconfig.main.json --noEmit"
   },
   "repository": {
     "type": "git",

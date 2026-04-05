@@ -1,23 +1,11 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import type { TreeNode } from '../filetree/tree';
+import type { RecentFile } from '../filetree/recentFiles';
 
-type TreeNode = {
-  name: string;
-  path: string;
-  type: 'file' | 'directory';
-  children?: TreeNode[];
-};
-
-type OpenFolderResult = {
+export type OpenFolderResult = {
   rootPath: string;
   tree: TreeNode[];
 } | null;
-
-type RecentFile = {
-  name: string;
-  path: string;
-  relativePath: string;
-  mtimeMs: number;
-};
 
 contextBridge.exposeInMainWorld('electronAPI', {
   openFolder: (): Promise<OpenFolderResult> => ipcRenderer.invoke('dialog:openFolder'),

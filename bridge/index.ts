@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import { CHANNELS } from './channels';
 
 export type TreeNode = {
   name: string;
@@ -20,19 +21,19 @@ export type OpenFolderResult = {
 } | null;
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  openFolder: (): Promise<OpenFolderResult> => ipcRenderer.invoke('dialog:openFolder'),
-  fileExists: (filePath: string): Promise<boolean> => ipcRenderer.invoke('fs:fileExists', filePath),
-  listRecentFiles: (): Promise<RecentFile[]> => ipcRenderer.invoke('fs:listRecentFiles'),
-  listTree: (): Promise<TreeNode[]> => ipcRenderer.invoke('fs:listTree'),
+  openFolder: (): Promise<OpenFolderResult> => ipcRenderer.invoke(CHANNELS.OPEN_FOLDER),
+  fileExists: (filePath: string): Promise<boolean> => ipcRenderer.invoke(CHANNELS.FILE_EXISTS, filePath),
+  listRecentFiles: (): Promise<RecentFile[]> => ipcRenderer.invoke(CHANNELS.LIST_RECENT_FILES),
+  listTree: (): Promise<TreeNode[]> => ipcRenderer.invoke(CHANNELS.LIST_TREE),
   explainFile: (filePath: string, tabId: string): Promise<void> =>
-    ipcRenderer.invoke('claude:explainFile', filePath, tabId),
+    ipcRenderer.invoke(CHANNELS.EXPLAIN_FILE, filePath, tabId),
   onExplanationChunk: (callback: (tabId: string, chunk: string) => void): void => {
-    ipcRenderer.on('claude:chunk', (_event, tabId: string, chunk: string) => callback(tabId, chunk));
+    ipcRenderer.on(CHANNELS.EXPLAIN_CHUNK, (_event, tabId: string, chunk: string) => callback(tabId, chunk));
   },
   onExplanationDone: (callback: (tabId: string) => void): void => {
-    ipcRenderer.on('claude:done', (_event, tabId: string) => callback(tabId));
+    ipcRenderer.on(CHANNELS.EXPLAIN_DONE, (_event, tabId: string) => callback(tabId));
   },
   onExplanationError: (callback: (tabId: string, err: string) => void): void => {
-    ipcRenderer.on('claude:error', (_event, tabId: string, err: string) => callback(tabId, err));
+    ipcRenderer.on(CHANNELS.EXPLAIN_ERROR, (_event, tabId: string, err: string) => callback(tabId, err));
   }
 });

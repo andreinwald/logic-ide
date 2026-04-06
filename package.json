@@ -20,7 +20,7 @@
     "vite-plugin-electron": "^0.29.1"
   },
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.2.92",
+    "@agentclientprotocol/claude-agent-acp": "^0.25.0",
     "@vitejs/plugin-react": "^6.0.1",
     "ignore": "^7.0.5",
     "marked": "^17.0.5",

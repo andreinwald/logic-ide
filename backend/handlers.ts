@@ -42,6 +42,7 @@ export function registerHandlers({ getWindow }: {
     if (!rootPath) { event.sender.send(CHANNELS.EXPLAIN_ERROR, tabId, 'No folder opened yet'); return; }
     const fileStructure = treeToString(await buildTree(rootPath));
     await repoExplainer(
+      rootPath,
       fileStructure,
       (chunk) => { event.sender.send(CHANNELS.EXPLAIN_CHUNK, tabId, chunk); },
       () => { event.sender.send(CHANNELS.EXPLAIN_DONE, tabId); },

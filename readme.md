@@ -9,3 +9,4 @@ Open any folder, browse its file tree, and click a file to get an LLM explain it
 
 The LLM sees the full repo structure and the content of other files you've already opened, so explanations have context about the codebase. If the LLM mentions related files, you can click the links to open them directly.
 
+Coding Agents (Claude Code, Codex, etc) connected via [Agent Client Protocol](https://agentclientprotocol.com)

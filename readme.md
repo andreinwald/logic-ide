@@ -1,6 +1,8 @@
 # Next-Gen AI IDE
 Read the logic, not the code.
-
+- Working with programming language you dont know
+- Checking that the code does what it's supposed to
+- Diving into an unfamiliar repository
 <img height="500" src="screenshot.png" alt="Screenshot"/>
 
 A desktop app for exploring code repositories with AI-powered explanations.

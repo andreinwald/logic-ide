@@ -2,8 +2,8 @@ import { dialog, ipcMain, BrowserWindow } from 'electron';
 import * as fs from 'node:fs/promises';
 import { buildTree, treeToString } from './filetree/tree';
 import { collectRecentFiles } from './filetree/recentFiles';
-import { explainer } from './explainer/explainer';
-import { repoExplainer } from './explainer/repoExplainer';
+import { fileExplainer } from './explainer/fileExplainer/fileExplainer';
+import { repoExplainer } from './explainer/repoExplainer/repoExplainer';
 import { CHANNELS } from '../bridge/channels';
 
 let currentRootPath: string | null = null;
@@ -52,7 +52,7 @@ export function registerHandlers({ getWindow }: {
 
   ipcMain.handle(CHANNELS.EXPLAIN_FILE, async (event, filePath: string, tabId: string) => {
     if (!currentRootPath) { event.sender.send(CHANNELS.EXPLAIN_ERROR, tabId, 'No folder opened yet'); return; }
-    await explainer(
+    await fileExplainer(
       filePath,
       (chunk) => { event.sender.send(CHANNELS.EXPLAIN_CHUNK, tabId, chunk); },
       () => { event.sender.send(CHANNELS.EXPLAIN_DONE, tabId); },

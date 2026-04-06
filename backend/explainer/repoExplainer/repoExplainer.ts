@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { ask } from '../llm/llm';
-import promptTemplate from './repoPrompt.md';
+import { ask } from '../../llm/llm';
+import promptTemplate from './prompt.md';
 
 const INFO_FILES = ['readme.md', 'package.json', 'composer.json', 'pyproject.toml', 'cargo.toml', 'go.mod', 'dockerfile'];
 

@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { ask } from '../llm/llm';
-import { getRepoExplanation } from './repoExplainer';
+import { ask } from '../../llm/llm';
+import { getRepoExplanation } from '../repoExplainer/repoExplainer';
 import promptTemplate from './prompt.md';
 
 type CacheEntry = {
@@ -22,7 +22,7 @@ function formatOtherFiles(currentFilePath: string): string {
   return entries.map(([p, e]) => `### ${p}\n${e.fileContent}`).join('\n\n');
 }
 
-export async function explainer(
+export async function fileExplainer(
   filePath: string,
   onChunk: (chunk: string) => void,
   onDone: () => void,

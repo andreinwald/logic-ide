@@ -1,6 +1,6 @@
 {
-  "name": "code-viewer",
-  "version": "1.0.0",
+  "name": "logic-ide",
+  "version": "0.0.1",
   "main": "dist/electron/main.js",
   "scripts": {
     "build": "vite build",

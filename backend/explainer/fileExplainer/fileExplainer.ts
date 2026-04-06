@@ -1,6 +1,6 @@
 import * as fs from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { ask } from '../../llm/llm';
+import { ask } from '../../agent/ask';
 import { getRepoExplanation } from '../repoExplainer/repoExplainer';
 import promptTemplate from './prompt.md';
 

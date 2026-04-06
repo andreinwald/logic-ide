@@ -20,6 +20,12 @@ export type OpenFolderResult = {
   tree: TreeNode[];
 } | null;
 
+export type ChatEvent =
+  | { type: 'agent_text_chunk'; messageId: string; text: string }
+  | { type: 'agent_thought_chunk'; messageId: string; text: string }
+  | { type: 'tool_call'; toolCallId: string; title: string; kind?: string; status: string }
+  | { type: 'tool_call_update'; toolCallId: string; title?: string; status?: string; kind?: string };
+
 export type ElectronAPI = {
   openFolder: () => Promise<OpenFolderResult>;
   fileExists: (filePath: string) => Promise<boolean>;
@@ -31,6 +37,11 @@ export type ElectronAPI = {
   onExplanationDone: (callback: (tabId: string) => void) => void;
   onExplanationError: (callback: (tabId: string, err: string) => void) => void;
   onMenuOpenFolder: (callback: () => void) => void;
+  chatSend: (message: string) => Promise<void>;
+  chatStop: () => Promise<void>;
+  onChatEvent: (callback: (event: ChatEvent) => void) => void;
+  onChatDone: (callback: () => void) => void;
+  onChatError: (callback: (err: string) => void) => void;
 };
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -53,5 +64,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   onMenuOpenFolder: (callback: () => void): void => {
     ipcRenderer.on('menu:open-folder', () => callback());
+  },
+  chatSend: (message: string): Promise<void> => ipcRenderer.invoke(CHANNELS.CHAT_SEND, message),
+  chatStop: (): Promise<void> => ipcRenderer.invoke(CHANNELS.CHAT_STOP),
+  onChatEvent: (callback: (event: ChatEvent) => void): void => {
+    ipcRenderer.on(CHANNELS.CHAT_EVENT, (_event, chatEvent: ChatEvent) => callback(chatEvent));
+  },
+  onChatDone: (callback: () => void): void => {
+    ipcRenderer.on(CHANNELS.CHAT_DONE, () => callback());
+  },
+  onChatError: (callback: (err: string) => void): void => {
+    ipcRenderer.on(CHANNELS.CHAT_ERROR, (_event, err: string) => callback(err));
   },
 });

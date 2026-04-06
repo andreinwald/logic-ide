@@ -8,4 +8,9 @@ export const CHANNELS = {
   EXPLAIN_CHUNK: 'llm:chunk',
   EXPLAIN_DONE: 'llm:done',
   EXPLAIN_ERROR: 'llm:error',
+  CHAT_SEND: 'chat:send',
+  CHAT_STOP: 'chat:stop',
+  CHAT_EVENT: 'chat:event',
+  CHAT_DONE: 'chat:done',
+  CHAT_ERROR: 'chat:error',
 } as const;

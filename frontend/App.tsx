@@ -4,6 +4,8 @@ import { Tabs } from './Tabs';
 import type { Tab } from './Tabs';
 import { FileTree } from './FileTree';
 import { RecentFiles } from './RecentFiles';
+import { Chat, applyEvent } from './Chat';
+import type { ChatMessage } from './Chat';
 import { ElectronAPI } from './ElectronAPI';
 
 let nextTabId = 1;
@@ -17,6 +19,8 @@ export default function App() {
   const [recentFiles, setRecentFiles] = useState<RecentFile[]>([]);
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatRunning, setChatRunning] = useState(false);
 
   const layoutRef = useRef<HTMLElement>(null);
   const sidebarRef = useRef<HTMLElement>(null);
@@ -24,6 +28,18 @@ export default function App() {
   // Menu: Open Folder
   useEffect(() => {
     ElectronAPI.onMenuOpenFolder(() => { void handleOpenFolder(); });
+  }, []);
+
+  // Chat IPC
+  useEffect(() => {
+    ElectronAPI.onChatEvent((event) => {
+      setChatMessages(prev => applyEvent(prev, event));
+    });
+    ElectronAPI.onChatDone(() => setChatRunning(false));
+    ElectronAPI.onChatError((err) => {
+      setChatRunning(false);
+      setChatMessages(prev => [...prev, { id: String(Date.now()), role: 'agent', blocks: [{ type: 'text', messageId: String(Date.now()), text: `Error: ${err}` }] }]);
+    });
   }, []);
 
   // IPC streaming
@@ -108,9 +124,31 @@ export default function App() {
     };
     rowResizer.addEventListener('mousedown', onRowDown);
 
+    const chatResizer = document.getElementById('resizer-chat')!;
+    const onChatColDown = (e: MouseEvent) => {
+      e.preventDefault();
+      const startX = e.clientX;
+      const startW = parseInt(getComputedStyle(layout).getPropertyValue('--col-chat') || '320', 10);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      const onMove = (ev: MouseEvent) => {
+        layout.style.setProperty('--col-chat', `${Math.max(200, Math.min(startW - (ev.clientX - startX), window.innerWidth - 400))}px`);
+      };
+      const onUp = () => {
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    };
+    chatResizer.addEventListener('mousedown', onChatColDown);
+
     return () => {
       colResizer.removeEventListener('mousedown', onColDown);
       rowResizer.removeEventListener('mousedown', onRowDown);
+      chatResizer.removeEventListener('mousedown', onChatColDown);
     };
   }, []);
 
@@ -169,6 +207,18 @@ export default function App() {
     return tabId;
   }
 
+  function handleChatSend(message: string): void {
+    const userMsg: ChatMessage = { id: String(Date.now()), role: 'user', blocks: [{ type: 'text', messageId: String(Date.now()), text: message }] };
+    setChatMessages(prev => [...prev, userMsg]);
+    setChatRunning(true);
+    void ElectronAPI.chatSend(message);
+  }
+
+  function handleChatStop(): void {
+    void ElectronAPI.chatStop();
+    setChatRunning(false);
+  }
+
   async function handleOpenFolder(): Promise<void> {
     const result = await ElectronAPI.openFolder();
     if (!result) return;
@@ -211,6 +261,13 @@ export default function App() {
             onLinkClick={handleLinkClick}
           />
         </section>
+        <div className="resizer resizer-col" id="resizer-chat" />
+        <Chat
+          messages={chatMessages}
+          isRunning={chatRunning}
+          onSend={handleChatSend}
+          onStop={handleChatStop}
+        />
     </main>
   );
 }

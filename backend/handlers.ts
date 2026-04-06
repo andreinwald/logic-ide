@@ -4,6 +4,7 @@ import { buildTree, treeToString } from './filetree/tree';
 import { collectRecentFiles } from './filetree/recentFiles';
 import { fileExplainer } from './explainer/fileExplainer/fileExplainer';
 import { repoExplainer } from './explainer/repoExplainer/repoExplainer';
+import { chatSend, chatStop } from './agent/chat';
 import { CHANNELS } from '../bridge/channels';
 
 let currentRootPath: string | null = null;
@@ -58,5 +59,18 @@ export function registerHandlers({ getWindow }: {
       () => { event.sender.send(CHANNELS.EXPLAIN_DONE, tabId); },
       (err) => { event.sender.send(CHANNELS.EXPLAIN_ERROR, tabId, err); },
     );
+  });
+
+  ipcMain.handle(CHANNELS.CHAT_SEND, async (event, message: string) => {
+    await chatSend(
+      message,
+      (chatEvent) => { event.sender.send(CHANNELS.CHAT_EVENT, chatEvent); },
+      () => { event.sender.send(CHANNELS.CHAT_DONE); },
+      (err) => { event.sender.send(CHANNELS.CHAT_ERROR, err); },
+    );
+  });
+
+  ipcMain.handle(CHANNELS.CHAT_STOP, async () => {
+    await chatStop();
   });
 }

@@ -21,6 +21,11 @@ export default function App() {
   const layoutRef = useRef<HTMLElement>(null);
   const sidebarRef = useRef<HTMLElement>(null);
 
+  // Menu: Open Folder
+  useEffect(() => {
+    ElectronAPI.onMenuOpenFolder(() => { void handleOpenFolder(); });
+  }, []);
+
   // IPC streaming
   useEffect(() => {
     ElectronAPI.onExplanationChunk((tabId, chunk) => {
@@ -169,6 +174,7 @@ export default function App() {
     if (!result) return;
     setRootPath(result.rootPath);
     const repoName = result.rootPath.split('/').pop() ?? result.rootPath;
+    document.title = `Logic IDE — ${repoName}`;
     const tabId = openRepoTab(repoName);
     const [tree, recent] = await Promise.all([
       ElectronAPI.listTree(),
@@ -180,13 +186,11 @@ export default function App() {
   }
 
   return (
-    <>
-      <header className="topbar">
-        <button id="open-folder-btn" onClick={() => void handleOpenFolder()}>Open Folder</button>
-        <div id="root-path">{rootPath ?? 'No folder opened'}</div>
-      </header>
-      <main className="layout" ref={layoutRef}>
+    <main className="layout" ref={layoutRef}>
         <section className="sidebar" ref={sidebarRef}>
+          {!rootPath && (
+            <button id="open-folder-btn" onClick={() => void handleOpenFolder()}>Open Folder</button>
+          )}
           <section className="sidebar-panel recent-panel">
             <h2>Recent Files</h2>
             <RecentFiles files={recentFiles} theme={theme} onFileClick={openFile} />
@@ -207,7 +211,6 @@ export default function App() {
             onLinkClick={handleLinkClick}
           />
         </section>
-      </main>
-    </>
+    </main>
   );
 }

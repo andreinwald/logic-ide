@@ -30,6 +30,7 @@ export type ElectronAPI = {
   onExplanationChunk: (callback: (tabId: string, chunk: string) => void) => void;
   onExplanationDone: (callback: (tabId: string) => void) => void;
   onExplanationError: (callback: (tabId: string, err: string) => void) => void;
+  onMenuOpenFolder: (callback: () => void) => void;
 };
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -49,5 +50,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   onExplanationError: (callback: (tabId: string, err: string) => void): void => {
     ipcRenderer.on(CHANNELS.EXPLAIN_ERROR, (_event, tabId: string, err: string) => callback(tabId, err));
-  }
+  },
+  onMenuOpenFolder: (callback: () => void): void => {
+    ipcRenderer.on('menu:open-folder', () => callback());
+  },
 });

@@ -33,35 +33,23 @@ body {
   color: var(--text);
 }
 
-.topbar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border);
-}
-
 #open-folder-btn {
+  width: 100%;
   padding: 8px 12px;
+  margin-bottom: 12px;
   border: 1px solid var(--button-border);
   border-radius: 6px;
   background: var(--bg);
   color: var(--text);
   cursor: pointer;
-}
-
-#root-path {
-  color: var(--muted);
-  font-size: 12px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font: inherit;
+  font-size: 13px;
 }
 
 .layout {
   display: grid;
   grid-template-columns: var(--col-sidebar, 320px) 5px 1fr;
-  height: calc(100vh - 54px);
+  height: 100vh;
   overflow: hidden;
 }
 
